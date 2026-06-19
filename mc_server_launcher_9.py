@@ -361,6 +361,7 @@ class Launcher(tk.Tk):
             ("DL Java",    self.run_download_java),
             ("Mods",       self.run_check_mods),
             ("Log",        self.open_install_log),
+            ("Server Icon",self.run_set_server_icon),
             ("Kill",       self._kill_java),
             ("Del Mods",   self.delete_client_mods),
         ]:
@@ -842,6 +843,39 @@ class Launcher(tk.Tk):
         with open(p, "w") as f:
             f.write("serverJar=server.jar\n")
 
+
+    def run_set_server_icon(self):
+        path = filedialog.askopenfilename(
+            title="Pick a server icon",
+            filetypes=[("Images", "*.png *.jpg *.jpeg *.webp *.bmp *.gif"), ("All files", "*.*")])
+        if path:
+            self.threaded(lambda: self._set_server_icon(path))
+
+    def _set_server_icon(self, path):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.log("ERROR: Pillow is required — run: pip install pillow")
+            return
+        sd = self.server_dir.get()
+        if not sd:
+            self.log("Set a server folder first.")
+            return
+        os.makedirs(sd, exist_ok=True)
+        dest = os.path.join(sd, "server-icon.png")
+        try:
+            with Image.open(path) as img:
+                # Convert to RGBA first so any mode (palette, CMYK, etc.) works,
+                # then flatten to RGB for PNG compatibility with Minecraft.
+                img = img.convert("RGBA")
+                img = img.resize((64, 64), Image.LANCZOS)
+                # Minecraft needs RGB PNG (no alpha channel)
+                bg = Image.new("RGB", (64, 64), (0, 0, 0))
+                bg.paste(img, mask=img.split()[3])
+                bg.save(dest, "PNG")
+            self.log(f"server-icon.png saved (64x64) -> {dest}")
+        except Exception as e:
+            self.log(f"Icon error: {e}")
 
     def fix_eula(self):
         sd = self.server_dir.get()
