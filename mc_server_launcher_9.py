@@ -122,8 +122,8 @@ class Launcher(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(APP)
-        self.geometry("900x760")
-        self.minsize(820, 660)
+        self.geometry("860x680")
+        self.minsize(780, 560)
         self.configure(bg=self.C_BG)
 
         self.server_dir = tk.StringVar(value=os.path.abspath("./server"))
@@ -228,188 +228,183 @@ class Launcher(tk.Tk):
         s.map("TScrollbar", background=[("active", BOR)])
 
     # ---------- UI ----------
-    def _card(self, parent, title, pady=(6, 4)):
-        """Titled dark card frame."""
+    def _row(self, parent, pady=(2, 2)):
+        f = tk.Frame(parent, bg=self.C_CARD)
+        f.pack(fill="x", padx=8, pady=pady)
+        return f
+
+    def _sep(self, parent):
+        tk.Frame(parent, bg=self.C_BORDER, height=1).pack(fill="x", padx=0)
+
+    def _section(self, parent, title, pady=(4, 0)):
         outer = tk.Frame(parent, bg=self.C_BG)
-        outer.pack(fill="x", padx=10, pady=pady)
-        lbl = tk.Label(outer, text=title.upper(), bg=self.C_BG,
-                       fg=self.C_GREEN, font=("Segoe UI", 8, "bold"))
-        lbl.pack(anchor="w", padx=2, pady=(0, 3))
+        outer.pack(fill="x", padx=8, pady=pady)
+        tk.Label(outer, text=title.upper(), bg=self.C_BG, fg=self.C_GREEN,
+                 font=("Segoe UI", 7, "bold")).pack(anchor="w", padx=2, pady=(0, 1))
         inner = tk.Frame(outer, bg=self.C_CARD,
                          highlightbackground=self.C_BORDER, highlightthickness=1)
         inner.pack(fill="x")
         return inner
 
+    def _lbl(self, parent, text):
+        tk.Label(parent, text=text, bg=self.C_CARD, fg=self.C_DIM,
+                 font=("Segoe UI", 7)).pack(side="left", padx=(6, 1))
+
     def _build_ui(self):
-        # ── Header bar ───────────────────────────────────────────────
+        # ── Header ───────────────────────────────────────────────────
         hdr = tk.Frame(self, bg=self.C_SURFACE,
                        highlightbackground=self.C_BORDER, highlightthickness=1)
         hdr.pack(fill="x")
         tk.Label(hdr, text="⬡  MC Server Launcher", bg=self.C_SURFACE,
-                 fg=self.C_GREEN, font=("Segoe UI", 13, "bold"),
-                 padx=14, pady=10).pack(side="left")
-        tk.Label(hdr, text="NeoForge · Forge · Fabric",
-                 bg=self.C_SURFACE, fg=self.C_DIM,
-                 font=("Segoe UI", 9)).pack(side="left", padx=4)
+                 fg=self.C_GREEN, font=("Segoe UI", 11, "bold"),
+                 padx=10, pady=6).pack(side="left")
+        tk.Label(hdr, text="NeoForge · Forge · Fabric", bg=self.C_SURFACE,
+                 fg=self.C_DIM, font=("Segoe UI", 8)).pack(side="left")
 
-        # ── Scrollable body ──────────────────────────────────────────
         body = tk.Frame(self, bg=self.C_BG)
         body.pack(fill="both", expand=True)
 
-        # ── Server Setup card ────────────────────────────────────────
-        top = self._card(body, "Server Setup")
-        top.columnconfigure(1, weight=1)
+        # ── Folders ──────────────────────────────────────────────────
+        fld = self._section(body, "Folders", pady=(6, 0))
+        fld.columnconfigure(1, weight=1)
 
-        tk.Label(top, text="Install folder", bg=self.C_CARD, fg=self.C_DIM,
-                 font=("Segoe UI", 8)).grid(row=0, column=0, sticky="w", padx=10, pady=(8, 0))
-        ttk.Entry(top, textvariable=self.server_dir).grid(
-            row=1, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 4))
-        ttk.Button(top, text="Browse", command=self.pick_server_dir,
-                   style="Ghost.TButton").grid(row=1, column=2, padx=(0, 10), pady=(0, 4))
+        tk.Label(fld, text="Server", bg=self.C_CARD, fg=self.C_DIM,
+                 font=("Segoe UI", 7)).grid(row=0, column=0, sticky="w", padx=(8, 4), pady=(5, 0))
+        ttk.Entry(fld, textvariable=self.server_dir).grid(
+            row=0, column=1, sticky="we", padx=2, pady=(5, 2))
+        ttk.Button(fld, text="Browse", command=self.pick_server_dir,
+                   style="Ghost.TButton").grid(row=0, column=2, padx=2, pady=(5, 2))
+        ttk.Button(fld, text="Open", style="Ghost.TButton",
+                   command=lambda: os.startfile(self.server_dir.get())
+                   if os.path.isdir(self.server_dir.get()) else None
+                   ).grid(row=0, column=3, padx=(0, 6), pady=(5, 2))
 
-        tk.Label(top, text="Mods folder", bg=self.C_CARD, fg=self.C_DIM,
-                 font=("Segoe UI", 8)).grid(row=2, column=0, sticky="w", padx=10)
-        ttk.Entry(top, textvariable=self.mods_src).grid(
-            row=3, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 8))
-        ttk.Button(top, text="···", width=3, command=self.pick_mods_dir,
-                   style="Ghost.TButton").grid(row=3, column=2, padx=(0, 10), pady=(0, 8))
+        tk.Label(fld, text="Mods", bg=self.C_CARD, fg=self.C_DIM,
+                 font=("Segoe UI", 7)).grid(row=1, column=0, sticky="w", padx=(8, 4), pady=(0, 5))
+        ttk.Entry(fld, textvariable=self.mods_src).grid(
+            row=1, column=1, sticky="we", padx=2, pady=(0, 5))
+        ttk.Button(fld, text="Browse", command=self.pick_mods_dir,
+                   style="Ghost.TButton").grid(row=1, column=2, padx=2, pady=(0, 5))
+        ttk.Button(fld, text="Open", style="Ghost.TButton",
+                   command=lambda: os.startfile(self.mods_src.get())
+                   if os.path.isdir(self.mods_src.get()) else None
+                   ).grid(row=1, column=3, padx=(0, 6), pady=(0, 5))
 
-        # ── Loader & Version card ────────────────────────────────────
-        mid = self._card(body, "Loader & Version")
-        mid.columnconfigure(1, weight=1)
-        mid.columnconfigure(3, weight=1)
-        mid.columnconfigure(5, weight=2)
+        # ── Loader + Options (single row) ─────────────────────────────
+        cfg = self._section(body, "Loader & Options", pady=(4, 0))
+        r = self._row(cfg, pady=(5, 5))
 
-        tk.Label(mid, text="Loader", bg=self.C_CARD, fg=self.C_DIM,
-                 font=("Segoe UI", 8)).grid(row=0, column=0, sticky="w", padx=10, pady=(8, 0))
-        cb = ttk.Combobox(mid, textvariable=self.loader, state="readonly",
-                          values=["NeoForge", "Forge", "Fabric"], width=12)
-        cb.grid(row=1, column=0, sticky="w", padx=10, pady=(0, 8))
+        self._lbl(r, "Loader")
+        cb = ttk.Combobox(r, textvariable=self.loader, state="readonly",
+                          values=["NeoForge", "Forge", "Fabric"], width=10)
+        cb.pack(side="left", padx=(1, 8))
         cb.bind("<<ComboboxSelected>>", lambda e: self.refresh_versions())
 
-        tk.Label(mid, text="MC Version", bg=self.C_CARD, fg=self.C_DIM,
-                 font=("Segoe UI", 8)).grid(row=0, column=2, sticky="w", padx=6, pady=(8, 0))
-        self.mc_cb = ttk.Combobox(mid, textvariable=self.mc_version,
-                                   state="readonly", width=12)
-        self.mc_cb.grid(row=1, column=2, sticky="w", padx=6, pady=(0, 8))
+        self._lbl(r, "MC")
+        self.mc_cb = ttk.Combobox(r, textvariable=self.mc_version,
+                                   state="readonly", width=9)
+        self.mc_cb.pack(side="left", padx=(1, 8))
         self.mc_cb.bind("<<ComboboxSelected>>", lambda e: self.update_loader_versions())
 
-        tk.Label(mid, text="Loader Version", bg=self.C_CARD, fg=self.C_DIM,
-                 font=("Segoe UI", 8)).grid(row=0, column=4, sticky="w", padx=6, pady=(8, 0))
-        self.lv_cb = ttk.Combobox(mid, textvariable=self.loader_version,
-                                    state="readonly", width=18)
-        self.lv_cb.grid(row=1, column=4, sticky="we", padx=6, pady=(0, 8))
+        self._lbl(r, "Ver")
+        self.lv_cb = ttk.Combobox(r, textvariable=self.loader_version,
+                                    state="readonly", width=14)
+        self.lv_cb.pack(side="left", padx=(1, 4))
+        ttk.Button(r, text="↻", width=2, command=self.refresh_versions,
+                   style="Ghost.TButton").pack(side="left", padx=(0, 12))
 
-        ttk.Button(mid, text="↻ Refresh", command=self.refresh_versions,
-                   style="Ghost.TButton").grid(row=1, column=6, padx=(4, 10), pady=(0, 8))
-
-        # ── Options card ─────────────────────────────────────────────
-        opt = self._card(body, "Options")
-
-        tk.Label(opt, text="RAM", bg=self.C_CARD, fg=self.C_DIM,
-                 font=("Segoe UI", 8)).grid(row=0, column=0, sticky="w", padx=10, pady=(8, 0))
-        ttk.Combobox(opt, textvariable=self.ram, width=7, state="readonly",
+        self._lbl(r, "RAM")
+        ttk.Combobox(r, textvariable=self.ram, width=5, state="readonly",
                      values=["1G", "2G", "3G", "4G", "6G", "8G", "12G", "16G"]
-                     ).grid(row=1, column=0, sticky="w", padx=10, pady=(0, 8))
-        ttk.Checkbutton(opt, text="Accept EULA", variable=self.eula,
-                        style="TCheckbutton").grid(row=1, column=1, padx=10, pady=(0, 8), sticky="w")
-        ttk.Checkbutton(opt, text="Online mode", variable=self.online_mode,
-                        style="TCheckbutton").grid(row=1, column=2, padx=6, pady=(0, 8), sticky="w")
-        ttk.Checkbutton(opt, text="Skip SSL verify", variable=self.insecure_ssl,
-                        command=self._toggle_ssl,
-                        style="TCheckbutton").grid(row=1, column=3, padx=6, pady=(0, 8), sticky="w")
+                     ).pack(side="left", padx=(1, 8))
+        ttk.Checkbutton(r, text="EULA", variable=self.eula).pack(side="left", padx=4)
+        ttk.Checkbutton(r, text="Online", variable=self.online_mode).pack(side="left", padx=4)
+        ttk.Checkbutton(r, text="Skip SSL", variable=self.insecure_ssl,
+                        command=self._toggle_ssl).pack(side="left", padx=4)
 
-        # ── Guided Setup card ─────────────────────────────────────────
-        wiz_card = self._card(body, "Guided Setup", pady=(6, 4))
-        wiz_row = tk.Frame(wiz_card, bg=self.C_CARD)
-        wiz_row.pack(fill="x", padx=10, pady=8)
-        self.step_label = tk.Label(wiz_row, text="", bg=self.C_CARD,
-                                    fg=self.C_TEXT, font=("Segoe UI", 9, "bold"))
-        self.step_label.pack(side="left")
-        ttk.Button(wiz_row, text="Reset", command=self.wizard_reset,
-                   style="Ghost.TButton").pack(side="right", padx=(4, 0))
-        self.wiz_btn = ttk.Button(wiz_row, text="Start Setup",
+        # ── Wizard ───────────────────────────────────────────────────
+        wiz = self._section(body, "Guided Setup", pady=(4, 0))
+        wr = self._row(wiz, pady=(5, 5))
+        self.step_label = tk.Label(wr, text="", bg=self.C_CARD,
+                                    fg=self.C_TEXT, font=("Segoe UI", 8, "bold"))
+        self.step_label.pack(side="left", padx=(2, 0))
+        ttk.Button(wr, text="Reset", command=self.wizard_reset,
+                   style="Ghost.TButton").pack(side="right", padx=(3, 0))
+        self.wiz_btn = ttk.Button(wr, text="Start Setup",
                                    command=self.wizard_next, style="Green.TButton")
         self.wiz_btn.pack(side="right")
 
-        # ── Primary actions ───────────────────────────────────────────
-        act_card = self._card(body, "Actions", pady=(6, 4))
-        row1 = tk.Frame(act_card, bg=self.C_CARD)
-        row1.pack(fill="x", padx=10, pady=(8, 4))
-        ttk.Button(row1, text="▶  Install Server",
-                   command=self.run_install, style="Green.TButton").pack(side="left", padx=(0, 6))
-        ttk.Button(row1, text="⇄  Sync Mods",
-                   command=self.run_sync_mods).pack(side="left", padx=(0, 6))
-        ttk.Button(row1, text="▶  Start Server",
-                   command=self.run_start, style="Green.TButton").pack(side="left", padx=(0, 6))
-        ttk.Button(row1, text="■  Stop",
-                   command=self.stop_server, style="Red.TButton").pack(side="left")
+        # ── Actions ──────────────────────────────────────────────────
+        act = self._section(body, "Actions", pady=(4, 0))
+        ar = self._row(act, pady=(5, 5))
+        ttk.Button(ar, text="▶ Install", command=self.run_install,
+                   style="Green.TButton").pack(side="left", padx=(0, 4))
+        ttk.Button(ar, text="⇄ Sync Mods", command=self.run_sync_mods
+                   ).pack(side="left", padx=(0, 4))
+        ttk.Button(ar, text="▶ Start", command=self.run_start,
+                   style="Green.TButton").pack(side="left", padx=(0, 4))
+        ttk.Button(ar, text="■ Stop", command=self.stop_server,
+                   style="Red.TButton").pack(side="left", padx=(0, 12))
+        tk.Frame(ar, bg=self.C_BORDER, width=1).pack(side="left", fill="y", padx=4)
+        ttk.Button(ar, text="↓ Import Pack", command=self.run_import_pack,
+                   style="Ghost.TButton").pack(side="left", padx=(4, 4))
+        ttk.Button(ar, text="+ Add Existing", command=self.add_existing_server,
+                   style="Ghost.TButton").pack(side="left")
 
-        row2 = tk.Frame(act_card, bg=self.C_CARD)
-        row2.pack(fill="x", padx=10, pady=(0, 8))
-        ttk.Button(row2, text="↓ Import Modpack",
-                   command=self.run_import_pack, style="Ghost.TButton").pack(side="left", padx=(0, 6))
-        ttk.Button(row2, text="+ Add Existing Server",
-                   command=self.add_existing_server, style="Ghost.TButton").pack(side="left")
-
-        # ── Fixes & Tools card ────────────────────────────────────────
-        fix_card = self._card(body, "Fixes & Tools", pady=(6, 4))
-        fix_row = tk.Frame(fix_card, bg=self.C_CARD)
-        fix_row.pack(fill="x", padx=10, pady=6)
+        # ── Fixes ────────────────────────────────────────────────────
+        fix = self._section(body, "Fixes & Tools", pady=(4, 0))
+        fr = self._row(fix, pady=(4, 4))
         for label, cmd in [
-            ("server.jar",     self.run_fix_serverjar),
-            ("Accept EULA",    self.fix_eula),
-            ("Java check",     self.run_java_check),
-            ("Download Java",  self.run_download_java),
-            ("Check Mods",     self.run_check_mods),
-            ("Install Log",    self.open_install_log),
-            ("Kill Server",    self._kill_java),
-            ("Del Client Mods",self.delete_client_mods),
+            ("server.jar", self.run_fix_serverjar),
+            ("EULA",       self.fix_eula),
+            ("Java check", self.run_java_check),
+            ("DL Java",    self.run_download_java),
+            ("Mods",       self.run_check_mods),
+            ("Log",        self.open_install_log),
+            ("Kill",       self._kill_java),
+            ("Del Mods",   self.delete_client_mods),
         ]:
-            ttk.Button(fix_row, text=label, command=cmd,
-                       style="Ghost.TButton").pack(side="left", padx=(0, 4))
-        tk.Frame(fix_row, bg=self.C_BORDER, width=1).pack(side="left", fill="y", padx=6)
-        ttk.Button(fix_row, text="Delete Server",
-                   command=self.delete_server, style="Red.TButton").pack(side="left")
+            ttk.Button(fr, text=label, command=cmd,
+                       style="Ghost.TButton").pack(side="left", padx=(0, 3))
+        tk.Frame(fr, bg=self.C_BORDER, width=1).pack(side="left", fill="y", padx=5)
+        ttk.Button(fr, text="Del Server", command=self.delete_server,
+                   style="Red.TButton").pack(side="left")
 
-        # ── Add Mods (Modrinth search) ────────────────────────────────
-        mods_card = self._card(body, "Add Mods — Modrinth Search", pady=(6, 4))
-
-        search_row = tk.Frame(mods_card, bg=self.C_CARD)
-        search_row.pack(fill="x", padx=10, pady=(8, 4))
+        # ── Mod Search ───────────────────────────────────────────────
+        mod = self._section(body, "Add Mods — Modrinth", pady=(4, 0))
+        sr = self._row(mod, pady=(5, 3))
         self.mod_search_var = tk.StringVar()
-        mod_entry = ttk.Entry(search_row, textvariable=self.mod_search_var)
-        mod_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
-        mod_entry.bind("<Return>", lambda e: self.run_mod_search())
-        ttk.Button(search_row, text="Search", command=self.run_mod_search,
+        me = ttk.Entry(sr, textvariable=self.mod_search_var)
+        me.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        me.bind("<Return>", lambda e: self.run_mod_search())
+        ttk.Button(sr, text="Search", command=self.run_mod_search,
                    style="Green.TButton").pack(side="left")
 
-        list_frame = tk.Frame(mods_card, bg=self.C_CARD)
-        list_frame.pack(fill="x", padx=10, pady=(0, 4))
-        sb = tk.Scrollbar(list_frame, bg=self.C_BORDER, troughcolor=self.C_BG,
+        lf = tk.Frame(mod, bg=self.C_CARD)
+        lf.pack(fill="x", padx=8, pady=(0, 3))
+        sb = tk.Scrollbar(lf, bg=self.C_BORDER, troughcolor=self.C_BG,
                           relief="flat", borderwidth=0)
         sb.pack(side="right", fill="y")
         self.mod_listbox = tk.Listbox(
-            list_frame, bg=self.C_SURFACE, fg=self.C_TEXT,
+            lf, bg=self.C_SURFACE, fg=self.C_TEXT,
             selectbackground=self.C_GREEN, selectforeground="#000000",
-            font=("Segoe UI", 9), height=5, relief="flat", borderwidth=0,
+            font=("Segoe UI", 8), height=4, relief="flat", borderwidth=0,
             activestyle="none", yscrollcommand=sb.set)
         self.mod_listbox.pack(fill="x", expand=True)
         sb.config(command=self.mod_listbox.yview)
 
-        add_row = tk.Frame(mods_card, bg=self.C_CARD)
-        add_row.pack(fill="x", padx=10, pady=(0, 8))
-        ttk.Button(add_row, text="+ Add to Server", command=self.run_mod_install,
+        ir = self._row(mod, pady=(0, 5))
+        ttk.Button(ir, text="+ Add to Server", command=self.run_mod_install,
                    style="Green.TButton").pack(side="left")
-        self.mod_status_lbl = tk.Label(add_row, text="", bg=self.C_CARD,
-                                        fg=self.C_DIM, font=("Segoe UI", 8))
-        self.mod_status_lbl.pack(side="left", padx=10)
+        self.mod_status_lbl = tk.Label(ir, text="", bg=self.C_CARD,
+                                        fg=self.C_DIM, font=("Segoe UI", 7))
+        self.mod_status_lbl.pack(side="left", padx=8)
 
         # ── Console ───────────────────────────────────────────────────
         con_outer = tk.Frame(body, bg=self.C_BG)
-        con_outer.pack(fill="both", expand=True, padx=10, pady=(6, 10))
+        con_outer.pack(fill="both", expand=True, padx=8, pady=(4, 8))
         tk.Label(con_outer, text="CONSOLE", bg=self.C_BG, fg=self.C_GREEN,
-                 font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=2, pady=(0, 3))
+                 font=("Segoe UI", 7, "bold")).pack(anchor="w", padx=2, pady=(0, 2))
         con_frame = tk.Frame(con_outer, bg=self.C_CON_BG,
                              highlightbackground=self.C_BORDER, highlightthickness=1)
         con_frame.pack(fill="both", expand=True)
