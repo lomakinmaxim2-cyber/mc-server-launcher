@@ -18,6 +18,7 @@ import threading
 import subprocess
 import urllib.request
 import urllib.error
+import urllib.parse
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 
@@ -139,6 +140,7 @@ class Launcher(tk.Tk):
         self._versions_cache = {}
         self._wiz_step = 0
         self._wiz_busy = False
+        self._mod_results = []
 
         self._setup_theme()
         self._build_ui()
@@ -369,6 +371,39 @@ class Launcher(tk.Tk):
         tk.Frame(fix_row, bg=self.C_BORDER, width=1).pack(side="left", fill="y", padx=6)
         ttk.Button(fix_row, text="Delete Server",
                    command=self.delete_server, style="Red.TButton").pack(side="left")
+
+        # ── Add Mods (Modrinth search) ────────────────────────────────
+        mods_card = self._card(body, "Add Mods — Modrinth Search", pady=(6, 4))
+
+        search_row = tk.Frame(mods_card, bg=self.C_CARD)
+        search_row.pack(fill="x", padx=10, pady=(8, 4))
+        self.mod_search_var = tk.StringVar()
+        mod_entry = ttk.Entry(search_row, textvariable=self.mod_search_var)
+        mod_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        mod_entry.bind("<Return>", lambda e: self.run_mod_search())
+        ttk.Button(search_row, text="Search", command=self.run_mod_search,
+                   style="Green.TButton").pack(side="left")
+
+        list_frame = tk.Frame(mods_card, bg=self.C_CARD)
+        list_frame.pack(fill="x", padx=10, pady=(0, 4))
+        sb = tk.Scrollbar(list_frame, bg=self.C_BORDER, troughcolor=self.C_BG,
+                          relief="flat", borderwidth=0)
+        sb.pack(side="right", fill="y")
+        self.mod_listbox = tk.Listbox(
+            list_frame, bg=self.C_SURFACE, fg=self.C_TEXT,
+            selectbackground=self.C_GREEN, selectforeground="#000000",
+            font=("Segoe UI", 9), height=5, relief="flat", borderwidth=0,
+            activestyle="none", yscrollcommand=sb.set)
+        self.mod_listbox.pack(fill="x", expand=True)
+        sb.config(command=self.mod_listbox.yview)
+
+        add_row = tk.Frame(mods_card, bg=self.C_CARD)
+        add_row.pack(fill="x", padx=10, pady=(0, 8))
+        ttk.Button(add_row, text="+ Add to Server", command=self.run_mod_install,
+                   style="Green.TButton").pack(side="left")
+        self.mod_status_lbl = tk.Label(add_row, text="", bg=self.C_CARD,
+                                        fg=self.C_DIM, font=("Segoe UI", 8))
+        self.mod_status_lbl.pack(side="left", padx=10)
 
         # ── Console ───────────────────────────────────────────────────
         con_outer = tk.Frame(body, bg=self.C_BG)
@@ -1211,6 +1246,89 @@ class Launcher(tk.Tk):
             self.log(f"Pack -> {loader} {lver} for MC {mc}")
         self.after(0, apply)
 
+    # ---------- modrinth mod search ----------
+    def run_mod_search(self):
+        self.threaded(self._mod_search)
+
+    def _mod_search(self):
+        query = self.mod_search_var.get().strip()
+        if not query:
+            return
+        mc = self.mc_version.get()
+        self.mod_status_lbl.config(text="Searching...")
+        self.log(f"Searching Modrinth for '{query}'...")
+        try:
+            facets = [["project_type:mod"]]
+            if mc:
+                facets.append([f"versions:{mc}"])
+            url = (f"https://api.modrinth.com/v2/search"
+                   f"?query={urllib.parse.quote(query)}"
+                   f"&facets={urllib.parse.quote(json.dumps(facets))}"
+                   f"&limit=25")
+            data = http_json(url)
+            hits = data.get("hits", [])
+            self._mod_results = hits
+            self.after(0, lambda: self._populate_mod_list(hits))
+        except Exception as e:
+            self.log(f"Mod search error: {e}")
+            self.after(0, lambda: self.mod_status_lbl.config(text="Search failed."))
+
+    def _populate_mod_list(self, hits):
+        self.mod_listbox.delete(0, "end")
+        for h in hits:
+            dl = h.get("downloads", 0)
+            desc = h.get("description", "")[:55]
+            self.mod_listbox.insert("end", f"  {h['title']}  —  {desc}  [{dl:,} DLs]")
+        self.mod_status_lbl.config(
+            text=f"{len(hits)} result(s)" if hits else "No results found.")
+
+    def run_mod_install(self):
+        sel = self.mod_listbox.curselection()
+        if not sel:
+            self.log("Select a mod from the list first.")
+            return
+        mod = self._mod_results[sel[0]]
+        self.threaded(lambda: self._mod_install(mod))
+
+    def _mod_install(self, mod):
+        slug = mod.get("slug") or mod.get("project_id")
+        mc = self.mc_version.get()
+        loader = self.loader.get().lower()
+        sd = self.server_dir.get()
+        mods_dir = os.path.join(sd, "mods")
+        os.makedirs(mods_dir, exist_ok=True)
+        self.log(f"Fetching versions for {mod['title']}...")
+        self.after(0, lambda: self.mod_status_lbl.config(text="Installing..."))
+        try:
+            params = []
+            if mc:
+                params.append(f"game_versions=[\"{mc}\"]")
+            if loader:
+                params.append(f"loaders=[\"{loader}\"]")
+            url = (f"https://api.modrinth.com/v2/project/{slug}/version"
+                   + (("?" + "&".join(params)) if params else ""))
+            versions = http_json(url)
+            if not versions:
+                url = f"https://api.modrinth.com/v2/project/{slug}/version"
+                versions = http_json(url)
+            if not versions:
+                self.log(f"No compatible version found for {mod['title']}.")
+                self.after(0, lambda: self.mod_status_lbl.config(text="No compatible version."))
+                return
+            files = versions[0].get("files", [])
+            primary = next((f for f in files if f.get("primary")), files[0] if files else None)
+            if not primary:
+                self.log("No downloadable file found.")
+                return
+            fname = primary["filename"]
+            dest = os.path.join(mods_dir, fname)
+            self._download(primary["url"], dest, note=f"Modrinth: {mod['title']}")
+            self.log(f"Mod installed: {fname}")
+            self.after(0, lambda: self.mod_status_lbl.config(text=f"Installed: {fname}"))
+        except Exception as e:
+            self.log(f"Mod install error: {e}")
+            self.after(0, lambda: self.mod_status_lbl.config(text="Install failed."))
+
     # ---------- mods ----------
     def run_sync_mods(self):
         self.threaded(self._sync_mods)
@@ -1282,7 +1400,8 @@ class Launcher(tk.Tk):
         try:
             if os.name == "nt":
                 out = subprocess.check_output(
-                    ["netstat", "-ano"], text=True, stderr=subprocess.DEVNULL)
+                    ["netstat", "-ano"], text=True, stderr=subprocess.DEVNULL,
+                    **self._no_window())
                 for line in out.splitlines():
                     if f":{port}" in line and "LISTENING" in line:
                         parts = line.split()
@@ -1305,7 +1424,7 @@ class Launcher(tk.Tk):
                 pid = self.proc.pid
                 if os.name == "nt":
                     subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
-                                   capture_output=True, text=True)
+                                   capture_output=True, text=True, **self._no_window())
                 else:
                     import signal, os as _os
                     try:
@@ -1319,7 +1438,7 @@ class Launcher(tk.Tk):
                     self.log(f"No tracked process; killing PID {pid} on port 25565.")
                     if os.name == "nt":
                         subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
-                                       capture_output=True, text=True)
+                                       capture_output=True, text=True, **self._no_window())
                     else:
                         import signal
                         os.kill(pid, signal.SIGKILL)
@@ -1428,7 +1547,8 @@ class Launcher(tk.Tk):
             self.proc = subprocess.Popen(
                 cmd, cwd=sd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, text=True, bufsize=1,
-                encoding="utf-8", errors="replace", env=self._utf8_env())
+                encoding="utf-8", errors="replace", env=self._utf8_env(),
+                **self._no_window())
             threading.Thread(target=self._pump, daemon=True).start()
         except Exception as e:
             self.log(f"START ERROR: {e}")
@@ -1460,6 +1580,12 @@ class Launcher(tk.Tk):
             self.log("No server running.")
 
     # ---------- java runner ----------
+    def _no_window(self):
+        """Suppress the extra CMD/console window that pops up on Windows."""
+        if os.name != "nt":
+            return {}
+        return {"creationflags": subprocess.CREATE_NO_WINDOW}
+
     def _utf8_env(self):
         """Force UTF-8 so Java + Python handle non-ASCII paths (e.g. Cyrillic)."""
         env = os.environ.copy()
@@ -1482,7 +1608,8 @@ class Launcher(tk.Tk):
         self.log("RUN: " + java + " " + " ".join(fixed))
         p = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT, text=True, bufsize=1,
-                             encoding="utf-8", errors="replace", env=self._utf8_env())
+                             encoding="utf-8", errors="replace", env=self._utf8_env(),
+                             **self._no_window())
         for line in p.stdout:
             self.log(line.rstrip())
         p.wait()
