@@ -396,13 +396,6 @@ class Launcher(tk.Tk):
         ttk.Button(cmd_row, text="Send", command=self.send_command,
                    style="Ghost.TButton").pack(side="left", padx=6, pady=4)
 
-        cmd = ttk.Frame(con)
-        cmd.pack(fill="x", padx=4, pady=4)
-        self.cmd_entry = ttk.Entry(cmd)
-        self.cmd_entry.pack(side="left", fill="x", expand=True)
-        self.cmd_entry.bind("<Return>", lambda e: self.send_command())
-        ttk.Button(cmd, text="Send", command=self.send_command).pack(side="left", padx=4)
-
     # ---------- guided wizard ----------
     # Each step: (label shown to user, method to run, whether it runs in a thread)
     def _wiz_steps(self):
