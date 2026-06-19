@@ -1107,19 +1107,57 @@ class Launcher(tk.Tk):
         finally:
             s.close()
 
-    def _kill_java(self):
-        self.log("Killing leftover Java processes...")
+    def _pid_on_port(self, port):
+        """Return the PID listening on *port*, or None if not found."""
         try:
             if os.name == "nt":
-                subprocess.run(["taskkill", "/F", "/IM", "java.exe"],
-                               capture_output=True, text=True)
-                subprocess.run(["taskkill", "/F", "/IM", "javaw.exe"],
-                               capture_output=True, text=True)
+                out = subprocess.check_output(
+                    ["netstat", "-ano"], text=True, stderr=subprocess.DEVNULL)
+                for line in out.splitlines():
+                    if f":{port}" in line and "LISTENING" in line:
+                        parts = line.split()
+                        if parts:
+                            return int(parts[-1])
             else:
-                subprocess.run(["pkill", "-9", "java"], capture_output=True, text=True)
-            self.log("Done. Java processes terminated.")
+                out = subprocess.check_output(
+                    ["lsof", "-ti", f":{port}"], text=True, stderr=subprocess.DEVNULL)
+                pid = out.strip().splitlines()[0]
+                if pid.isdigit():
+                    return int(pid)
+        except Exception:
+            pass
+        return None
+
+    def _kill_java(self):
+        self.log("Stopping server process...")
+        try:
+            if self.proc and self.proc.poll() is None:
+                pid = self.proc.pid
+                if os.name == "nt":
+                    subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
+                                   capture_output=True, text=True)
+                else:
+                    import signal, os as _os
+                    try:
+                        _os.killpg(_os.getpgid(pid), signal.SIGKILL)
+                    except ProcessLookupError:
+                        self.proc.kill()
+                self.log(f"Server process (PID {pid}) terminated.")
+            else:
+                pid = self._pid_on_port(25565)
+                if pid:
+                    self.log(f"No tracked process; killing PID {pid} on port 25565.")
+                    if os.name == "nt":
+                        subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
+                                       capture_output=True, text=True)
+                    else:
+                        import signal
+                        os.kill(pid, signal.SIGKILL)
+                    self.log("Done.")
+                else:
+                    self.log("No server process found to kill.")
         except Exception as e:
-            self.log(f"Could not kill Java: {e}")
+            self.log(f"Could not stop server: {e}")
 
     def _clear_session_lock(self, sd):
         """Remove stale session.lock files left by a crashed run. Only safe because
@@ -1167,9 +1205,19 @@ class Launcher(tk.Tk):
             ok = messagebox.askyesno(
                 APP,
                 "Port 25565 is already in use, likely a leftover server process "
-                "from a failed start.\n\nKill all Java processes and continue?")
+                "from a failed start.\n\nKill the process on that port and continue?")
             if ok:
-                self._kill_java()
+                pid = self._pid_on_port(25565)
+                if pid:
+                    self.log(f"Killing PID {pid} on port 25565...")
+                    if os.name == "nt":
+                        subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
+                                       capture_output=True, text=True)
+                    else:
+                        import signal
+                        os.kill(pid, signal.SIGKILL)
+                else:
+                    self._kill_java()
                 self.after(800, lambda: self.threaded(self._start))
                 return
             else:
