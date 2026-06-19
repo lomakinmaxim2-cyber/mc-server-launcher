@@ -21,7 +21,9 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -r dev-requirements.txt
+        run: pip install -r dev-requirements.txt pyflakes
+      - name: Lint (catch undefined names before building)
+        run: python -m pyflakes mc_server_launcher_9.py
 
       - name: Build exe
         run: python build.py
@@ -32,3 +34,4 @@ jobs:
           files: dist/MCServerLauncher.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

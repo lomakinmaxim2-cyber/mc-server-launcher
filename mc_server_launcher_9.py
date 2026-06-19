@@ -417,7 +417,6 @@ class Launcher(tk.Tk):
         ]
 
     def wizard_show(self, done_step=None):
-        steps = self._wiz_steps()
         if done_step:
             # briefly show the completed step, then advance the label
             self.step_label.config(text=f"Step {done_step} Done", fg=self.C_GREEN)
@@ -781,9 +780,9 @@ class Launcher(tk.Tk):
                 if verify and want_sha:
                     got = self._sha1(dest)
                     if got.lower() != want_sha.lower():
-                        self.log(f"  SHA1 mismatch, retrying.")
+                        self.log("  SHA1 mismatch, retrying.")
                         continue
-                    self.log(f"  SHA1 verified OK.")
+                    self.log("  SHA1 verified OK.")
 
                 # write the fabric properties so the launcher always finds it
                 self._write_fabric_props(sd)
