@@ -18,7 +18,8 @@ Supports **NeoForge**, **Forge**, and **Fabric** loaders. Import modpacks direct
 - **Add existing server** — auto-detects loader and MC version from an already-set-up server folder
 - **Vanilla server.jar fetcher** — downloads from Mojang with SHA1 verification and retries (fixes Fabric's "Missing game jar" error)
 - **Built-in console** — view server output and send commands without opening a terminal
-- **Fixes & tools** — Java version check, EULA accept, stale session.lock cleanup, port conflict detection, Kill Java button
+- **Fixes & tools** — Java version check, EULA accept, stale session.lock cleanup, port conflict detection, targeted server kill button
+- **Safe "Kill Java" button** — kills only the tracked server process (and its child tree), never your Minecraft client or other Java apps. Falls back to killing by port PID if no tracked process exists
 - **SSL auto-fallback** — handles broken system cert stores (common with DPI bypass tools on Windows)
 
 ---
