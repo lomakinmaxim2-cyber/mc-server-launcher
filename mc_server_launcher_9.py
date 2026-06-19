@@ -106,11 +106,24 @@ class Launcher(tk.Tk):
                    "blur", "drippyloadingscreen", "screenshot", "controlling",
                    "fancymenu", "betterhud", "raised", "shouldersurfing"]
 
+    # Modrinth palette
+    C_BG      = "#1a1a1f"
+    C_SURFACE = "#26262b"
+    C_CARD    = "#2d2d35"
+    C_BORDER  = "#3f3f47"
+    C_GREEN   = "#1bd96a"
+    C_GREEN_D = "#15a552"
+    C_TEXT    = "#ecedee"
+    C_DIM     = "#9d9daa"
+    C_RED     = "#ff496e"
+    C_CON_BG  = "#111115"
+
     def __init__(self):
         super().__init__()
         self.title(APP)
-        self.geometry("820x720")
-        self.minsize(760, 640)
+        self.geometry("900x760")
+        self.minsize(820, 660)
+        self.configure(bg=self.C_BG)
 
         self.server_dir = tk.StringVar(value=os.path.abspath("./server"))
         self.mods_src = tk.StringVar(value="")
@@ -127,109 +140,261 @@ class Launcher(tk.Tk):
         self._wiz_step = 0
         self._wiz_busy = False
 
+        self._setup_theme()
         self._build_ui()
         self.refresh_versions()
         self.wizard_show()
 
+    # ---------- theme ----------
+    def _setup_theme(self):
+        s = ttk.Style(self)
+        s.theme_use("clam")
+        BG, SUR, CARD, BOR = self.C_BG, self.C_SURFACE, self.C_CARD, self.C_BORDER
+        GR, GRD = self.C_GREEN, self.C_GREEN_D
+        TX, DIM, RED = self.C_TEXT, self.C_DIM, self.C_RED
+
+        # combobox dropdown colours (Tk option db)
+        self.option_add("*TCombobox*Listbox.background", CARD)
+        self.option_add("*TCombobox*Listbox.foreground", TX)
+        self.option_add("*TCombobox*Listbox.selectBackground", GR)
+        self.option_add("*TCombobox*Listbox.selectForeground", "#000000")
+
+        s.configure(".", background=BG, foreground=TX,
+                    font=("Segoe UI", 9), borderwidth=0, relief="flat")
+
+        s.configure("TFrame", background=BG)
+        s.configure("Card.TFrame", background=CARD)
+
+        s.configure("TLabel", background=BG, foreground=TX)
+        s.configure("Card.TLabel", background=CARD, foreground=TX)
+        s.configure("Dim.TLabel", background=CARD, foreground=DIM,
+                    font=("Segoe UI", 8))
+        s.configure("Header.TLabel", background=BG, foreground=GR,
+                    font=("Segoe UI", 11, "bold"))
+
+        s.configure("TLabelframe", background=CARD, bordercolor=BOR,
+                    relief="flat", padding=8)
+        s.configure("TLabelframe.Label", background=CARD, foreground=GR,
+                    font=("Segoe UI", 9, "bold"))
+
+        # Primary green button
+        s.configure("Green.TButton", background=GR, foreground="#000000",
+                    font=("Segoe UI", 9, "bold"), padding=(14, 7), relief="flat")
+        s.map("Green.TButton",
+              background=[("active", GRD), ("pressed", GRD), ("disabled", BOR)],
+              foreground=[("disabled", DIM)])
+
+        # Default (secondary) button
+        s.configure("TButton", background=SUR, foreground=TX,
+                    padding=(10, 6), relief="flat")
+        s.map("TButton",
+              background=[("active", BOR), ("pressed", BOR)])
+
+        # Danger button
+        s.configure("Red.TButton", background="#3a1520", foreground=RED,
+                    padding=(10, 6), relief="flat")
+        s.map("Red.TButton",
+              background=[("active", "#5a2030"), ("pressed", "#5a2030")])
+
+        # Ghost / small utility button
+        s.configure("Ghost.TButton", background=CARD, foreground=DIM,
+                    padding=(6, 4), relief="flat", font=("Segoe UI", 8))
+        s.map("Ghost.TButton",
+              background=[("active", BOR), ("pressed", BOR)],
+              foreground=[("active", TX)])
+
+        s.configure("TEntry", fieldbackground=SUR, foreground=TX,
+                    selectbackground=GR, selectforeground="#000000",
+                    bordercolor=BOR, insertcolor=TX, padding=4)
+        s.configure("TCombobox", fieldbackground=SUR, foreground=TX,
+                    selectbackground=SUR, selectforeground=TX,
+                    arrowcolor=DIM, bordercolor=BOR, padding=4)
+        s.map("TCombobox",
+              fieldbackground=[("readonly", SUR)],
+              foreground=[("readonly", TX)],
+              arrowcolor=[("active", GR)])
+
+        s.configure("TCheckbutton", background=CARD, foreground=DIM)
+        s.map("TCheckbutton",
+              background=[("active", CARD)],
+              foreground=[("active", TX)],
+              indicatorcolor=[("selected", GR), ("!selected", SUR)])
+
+        s.configure("TSeparator", background=BOR)
+        s.configure("TScrollbar", background=SUR, troughcolor=BG,
+                    arrowcolor=DIM, borderwidth=0, relief="flat")
+        s.map("TScrollbar", background=[("active", BOR)])
+
     # ---------- UI ----------
+    def _card(self, parent, title, pady=(6, 4)):
+        """Titled dark card frame."""
+        outer = tk.Frame(parent, bg=self.C_BG)
+        outer.pack(fill="x", padx=10, pady=pady)
+        lbl = tk.Label(outer, text=title.upper(), bg=self.C_BG,
+                       fg=self.C_GREEN, font=("Segoe UI", 8, "bold"))
+        lbl.pack(anchor="w", padx=2, pady=(0, 3))
+        inner = tk.Frame(outer, bg=self.C_CARD,
+                         highlightbackground=self.C_BORDER, highlightthickness=1)
+        inner.pack(fill="x")
+        return inner
+
     def _build_ui(self):
-        pad = {"padx": 8, "pady": 4}
-        top = ttk.Frame(self)
-        top.pack(fill="x", **pad)
+        # ── Header bar ───────────────────────────────────────────────
+        hdr = tk.Frame(self, bg=self.C_SURFACE,
+                       highlightbackground=self.C_BORDER, highlightthickness=1)
+        hdr.pack(fill="x")
+        tk.Label(hdr, text="⬡  MC Server Launcher", bg=self.C_SURFACE,
+                 fg=self.C_GREEN, font=("Segoe UI", 13, "bold"),
+                 padx=14, pady=10).pack(side="left")
+        tk.Label(hdr, text="NeoForge · Forge · Fabric",
+                 bg=self.C_SURFACE, fg=self.C_DIM,
+                 font=("Segoe UI", 9)).pack(side="left", padx=4)
 
-        # Server dir
-        ttk.Label(top, text="Install / server folder").grid(row=0, column=0, sticky="w")
-        ttk.Entry(top, textvariable=self.server_dir, width=54).grid(row=0, column=1, sticky="we")
-        ttk.Button(top, text="Browse", command=self.pick_server_dir).grid(row=0, column=2, padx=2)
+        # ── Scrollable body ──────────────────────────────────────────
+        body = tk.Frame(self, bg=self.C_BG)
+        body.pack(fill="both", expand=True)
 
-        # Mods source
-        ttk.Label(top, text="Mods folder").grid(row=1, column=0, sticky="w")
-        ttk.Entry(top, textvariable=self.mods_src, width=58).grid(row=1, column=1, sticky="we")
-        ttk.Button(top, text="...", width=3, command=self.pick_mods_dir).grid(row=1, column=2)
-
+        # ── Server Setup card ────────────────────────────────────────
+        top = self._card(body, "Server Setup")
         top.columnconfigure(1, weight=1)
 
-        # Loader + versions
-        mid = ttk.LabelFrame(self, text="Loader & Version")
-        mid.pack(fill="x", **pad)
+        tk.Label(top, text="Install folder", bg=self.C_CARD, fg=self.C_DIM,
+                 font=("Segoe UI", 8)).grid(row=0, column=0, sticky="w", padx=10, pady=(8, 0))
+        ttk.Entry(top, textvariable=self.server_dir).grid(
+            row=1, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 4))
+        ttk.Button(top, text="Browse", command=self.pick_server_dir,
+                   style="Ghost.TButton").grid(row=1, column=2, padx=(0, 10), pady=(0, 4))
 
-        ttk.Label(mid, text="Loader").grid(row=0, column=0, sticky="w", padx=6, pady=4)
+        tk.Label(top, text="Mods folder", bg=self.C_CARD, fg=self.C_DIM,
+                 font=("Segoe UI", 8)).grid(row=2, column=0, sticky="w", padx=10)
+        ttk.Entry(top, textvariable=self.mods_src).grid(
+            row=3, column=0, columnspan=2, sticky="we", padx=10, pady=(0, 8))
+        ttk.Button(top, text="···", width=3, command=self.pick_mods_dir,
+                   style="Ghost.TButton").grid(row=3, column=2, padx=(0, 10), pady=(0, 8))
+
+        # ── Loader & Version card ────────────────────────────────────
+        mid = self._card(body, "Loader & Version")
+        mid.columnconfigure(1, weight=1)
+        mid.columnconfigure(3, weight=1)
+        mid.columnconfigure(5, weight=2)
+
+        tk.Label(mid, text="Loader", bg=self.C_CARD, fg=self.C_DIM,
+                 font=("Segoe UI", 8)).grid(row=0, column=0, sticky="w", padx=10, pady=(8, 0))
         cb = ttk.Combobox(mid, textvariable=self.loader, state="readonly",
-                          values=["NeoForge", "Forge", "Fabric"], width=14)
-        cb.grid(row=0, column=1, sticky="w", padx=6)
+                          values=["NeoForge", "Forge", "Fabric"], width=12)
+        cb.grid(row=1, column=0, sticky="w", padx=10, pady=(0, 8))
         cb.bind("<<ComboboxSelected>>", lambda e: self.refresh_versions())
 
-        ttk.Label(mid, text="MC version").grid(row=0, column=2, sticky="w", padx=6)
-        self.mc_cb = ttk.Combobox(mid, textvariable=self.mc_version, state="readonly", width=14)
-        self.mc_cb.grid(row=0, column=3, sticky="w", padx=6)
+        tk.Label(mid, text="MC Version", bg=self.C_CARD, fg=self.C_DIM,
+                 font=("Segoe UI", 8)).grid(row=0, column=2, sticky="w", padx=6, pady=(8, 0))
+        self.mc_cb = ttk.Combobox(mid, textvariable=self.mc_version,
+                                   state="readonly", width=12)
+        self.mc_cb.grid(row=1, column=2, sticky="w", padx=6, pady=(0, 8))
         self.mc_cb.bind("<<ComboboxSelected>>", lambda e: self.update_loader_versions())
 
-        ttk.Label(mid, text="Loader version").grid(row=0, column=4, sticky="w", padx=6)
-        self.lv_cb = ttk.Combobox(mid, textvariable=self.loader_version, state="readonly", width=18)
-        self.lv_cb.grid(row=0, column=5, sticky="w", padx=6)
+        tk.Label(mid, text="Loader Version", bg=self.C_CARD, fg=self.C_DIM,
+                 font=("Segoe UI", 8)).grid(row=0, column=4, sticky="w", padx=6, pady=(8, 0))
+        self.lv_cb = ttk.Combobox(mid, textvariable=self.loader_version,
+                                    state="readonly", width=18)
+        self.lv_cb.grid(row=1, column=4, sticky="we", padx=6, pady=(0, 8))
 
-        ttk.Button(mid, text="Refresh", command=self.refresh_versions).grid(row=0, column=6, padx=6)
+        ttk.Button(mid, text="↻ Refresh", command=self.refresh_versions,
+                   style="Ghost.TButton").grid(row=1, column=6, padx=(4, 10), pady=(0, 8))
 
-        # Options
-        opt = ttk.LabelFrame(self, text="Options")
-        opt.pack(fill="x", **pad)
-        ttk.Label(opt, text="RAM").grid(row=0, column=0, padx=6, pady=4, sticky="w")
-        ttk.Combobox(opt, textvariable=self.ram, width=8, state="readonly",
-                     values=["1G", "2G", "3G", "4G", "6G", "8G", "12G", "16G"]).grid(row=0, column=1, sticky="w")
-        ttk.Checkbutton(opt, text="Accept EULA", variable=self.eula).grid(row=0, column=2, padx=12)
-        ttk.Checkbutton(opt, text="online-mode", variable=self.online_mode).grid(row=0, column=3, padx=6)
+        # ── Options card ─────────────────────────────────────────────
+        opt = self._card(body, "Options")
+
+        tk.Label(opt, text="RAM", bg=self.C_CARD, fg=self.C_DIM,
+                 font=("Segoe UI", 8)).grid(row=0, column=0, sticky="w", padx=10, pady=(8, 0))
+        ttk.Combobox(opt, textvariable=self.ram, width=7, state="readonly",
+                     values=["1G", "2G", "3G", "4G", "6G", "8G", "12G", "16G"]
+                     ).grid(row=1, column=0, sticky="w", padx=10, pady=(0, 8))
+        ttk.Checkbutton(opt, text="Accept EULA", variable=self.eula,
+                        style="TCheckbutton").grid(row=1, column=1, padx=10, pady=(0, 8), sticky="w")
+        ttk.Checkbutton(opt, text="Online mode", variable=self.online_mode,
+                        style="TCheckbutton").grid(row=1, column=2, padx=6, pady=(0, 8), sticky="w")
         ttk.Checkbutton(opt, text="Skip SSL verify", variable=self.insecure_ssl,
-                        command=self._toggle_ssl).grid(row=0, column=4, padx=6)
+                        command=self._toggle_ssl,
+                        style="TCheckbutton").grid(row=1, column=3, padx=6, pady=(0, 8), sticky="w")
 
-        # Actions
-        # Guided setup wizard
-        wiz = ttk.LabelFrame(self, text="Guided Setup")
-        wiz.pack(fill="x", **pad)
-        self.step_label = ttk.Label(wiz, text="", font=("Segoe UI", 10, "bold"))
-        self.step_label.pack(side="left", padx=8, pady=6)
-        self.wiz_btn = ttk.Button(wiz, text="Start Setup", command=self.wizard_next)
-        self.wiz_btn.pack(side="right", padx=8)
-        ttk.Button(wiz, text="Reset", command=self.wizard_reset).pack(side="right", padx=2)
+        # ── Guided Setup card ─────────────────────────────────────────
+        wiz_card = self._card(body, "Guided Setup", pady=(6, 4))
+        wiz_row = tk.Frame(wiz_card, bg=self.C_CARD)
+        wiz_row.pack(fill="x", padx=10, pady=8)
+        self.step_label = tk.Label(wiz_row, text="", bg=self.C_CARD,
+                                    fg=self.C_TEXT, font=("Segoe UI", 9, "bold"))
+        self.step_label.pack(side="left")
+        ttk.Button(wiz_row, text="Reset", command=self.wizard_reset,
+                   style="Ghost.TButton").pack(side="right", padx=(4, 0))
+        self.wiz_btn = ttk.Button(wiz_row, text="Start Setup",
+                                   command=self.wizard_next, style="Green.TButton")
+        self.wiz_btn.pack(side="right")
 
-        act = ttk.Frame(self)
-        act.pack(fill="x", **pad)
-        ttk.Button(act, text="Import Modpack", command=self.run_import_pack).pack(side="left", padx=4)
-        ttk.Button(act, text="Add Existing Server", command=self.add_existing_server).pack(side="left", padx=4)
-        ttk.Separator(act, orient="vertical").pack(side="left", fill="y", padx=6)
-        ttk.Button(act, text="1. Install Server", command=self.run_install).pack(side="left", padx=4)
-        ttk.Button(act, text="2. Sync Mods", command=self.run_sync_mods).pack(side="left", padx=4)
-        ttk.Button(act, text="3. Start Server", command=self.run_start).pack(side="left", padx=4)
-        ttk.Button(act, text="Stop", command=self.stop_server).pack(side="left", padx=4)
+        # ── Primary actions ───────────────────────────────────────────
+        act_card = self._card(body, "Actions", pady=(6, 4))
+        row1 = tk.Frame(act_card, bg=self.C_CARD)
+        row1.pack(fill="x", padx=10, pady=(8, 4))
+        ttk.Button(row1, text="▶  Install Server",
+                   command=self.run_install, style="Green.TButton").pack(side="left", padx=(0, 6))
+        ttk.Button(row1, text="⇄  Sync Mods",
+                   command=self.run_sync_mods).pack(side="left", padx=(0, 6))
+        ttk.Button(row1, text="▶  Start Server",
+                   command=self.run_start, style="Green.TButton").pack(side="left", padx=(0, 6))
+        ttk.Button(row1, text="■  Stop",
+                   command=self.stop_server, style="Red.TButton").pack(side="left")
 
-        # Fixes & tools
-        fix = ttk.LabelFrame(self, text="Fixes & Tools")
-        fix.pack(fill="x", **pad)
-        ttk.Button(fix, text="Fix: Download server.jar",
-                   command=self.run_fix_serverjar).pack(side="left", padx=4, pady=4)
-        ttk.Button(fix, text="Fix: Accept EULA",
-                   command=self.fix_eula).pack(side="left", padx=4)
-        ttk.Button(fix, text="Fix: Java check",
-                   command=self.run_java_check).pack(side="left", padx=4)
-        ttk.Button(fix, text="Download Java",
-                   command=self.run_download_java).pack(side="left", padx=4)
-        ttk.Button(fix, text="Check Mods",
-                   command=self.run_check_mods).pack(side="left", padx=4)
-        ttk.Button(fix, text="Open Install Log",
-                   command=self.open_install_log).pack(side="left", padx=4)
-        ttk.Button(fix, text="Kill Java",
-                   command=self._kill_java).pack(side="left", padx=4)
-        ttk.Button(fix, text="Delete Client Mods",
-                   command=self.delete_client_mods).pack(side="left", padx=4)
-        ttk.Separator(fix, orient="vertical").pack(side="left", fill="y", padx=6)
-        ttk.Button(fix, text="Delete Server",
-                   command=self.delete_server).pack(side="left", padx=4)
+        row2 = tk.Frame(act_card, bg=self.C_CARD)
+        row2.pack(fill="x", padx=10, pady=(0, 8))
+        ttk.Button(row2, text="↓ Import Modpack",
+                   command=self.run_import_pack, style="Ghost.TButton").pack(side="left", padx=(0, 6))
+        ttk.Button(row2, text="+ Add Existing Server",
+                   command=self.add_existing_server, style="Ghost.TButton").pack(side="left")
 
-        # Console
-        con = ttk.LabelFrame(self, text="Console")
-        con.pack(fill="both", expand=True, **pad)
-        self.console = scrolledtext.ScrolledText(con, height=16, bg="#101418", fg="#d6e2ee",
-                                                 insertbackground="#d6e2ee", font=("Consolas", 9))
-        self.console.pack(fill="both", expand=True, padx=4, pady=4)
+        # ── Fixes & Tools card ────────────────────────────────────────
+        fix_card = self._card(body, "Fixes & Tools", pady=(6, 4))
+        fix_row = tk.Frame(fix_card, bg=self.C_CARD)
+        fix_row.pack(fill="x", padx=10, pady=6)
+        for label, cmd in [
+            ("server.jar",     self.run_fix_serverjar),
+            ("Accept EULA",    self.fix_eula),
+            ("Java check",     self.run_java_check),
+            ("Download Java",  self.run_download_java),
+            ("Check Mods",     self.run_check_mods),
+            ("Install Log",    self.open_install_log),
+            ("Kill Server",    self._kill_java),
+            ("Del Client Mods",self.delete_client_mods),
+        ]:
+            ttk.Button(fix_row, text=label, command=cmd,
+                       style="Ghost.TButton").pack(side="left", padx=(0, 4))
+        tk.Frame(fix_row, bg=self.C_BORDER, width=1).pack(side="left", fill="y", padx=6)
+        ttk.Button(fix_row, text="Delete Server",
+                   command=self.delete_server, style="Red.TButton").pack(side="left")
+
+        # ── Console ───────────────────────────────────────────────────
+        con_outer = tk.Frame(body, bg=self.C_BG)
+        con_outer.pack(fill="both", expand=True, padx=10, pady=(6, 10))
+        tk.Label(con_outer, text="CONSOLE", bg=self.C_BG, fg=self.C_GREEN,
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=2, pady=(0, 3))
+        con_frame = tk.Frame(con_outer, bg=self.C_CON_BG,
+                             highlightbackground=self.C_BORDER, highlightthickness=1)
+        con_frame.pack(fill="both", expand=True)
+        self.console = scrolledtext.ScrolledText(
+            con_frame, height=14, bg=self.C_CON_BG, fg="#c8d3db",
+            insertbackground="#c8d3db", font=("Consolas", 9),
+            relief="flat", borderwidth=0, padx=8, pady=6,
+            selectbackground=self.C_BORDER)
+        self.console.pack(fill="both", expand=True)
+
+        cmd_row = tk.Frame(con_outer, bg=self.C_SURFACE,
+                           highlightbackground=self.C_BORDER, highlightthickness=1)
+        cmd_row.pack(fill="x", pady=(1, 0))
+        tk.Label(cmd_row, text=">", bg=self.C_SURFACE, fg=self.C_GREEN,
+                 font=("Consolas", 10, "bold"), padx=8).pack(side="left")
+        self.cmd_entry = ttk.Entry(cmd_row)
+        self.cmd_entry.pack(side="left", fill="x", expand=True, pady=4)
+        self.cmd_entry.bind("<Return>", lambda e: self.send_command())
+        ttk.Button(cmd_row, text="Send", command=self.send_command,
+                   style="Ghost.TButton").pack(side="left", padx=6, pady=4)
 
         cmd = ttk.Frame(con)
         cmd.pack(fill="x", padx=4, pady=4)
@@ -262,14 +427,14 @@ class Launcher(tk.Tk):
         steps = self._wiz_steps()
         if done_step:
             # briefly show the completed step, then advance the label
-            self.step_label.config(text=f"Step {done_step} Done", foreground="green")
+            self.step_label.config(text=f"Step {done_step} Done", fg=self.C_GREEN)
             self.after(900, lambda: self._wiz_show_current())
             return
         self._wiz_show_current()
 
     def _wiz_show_current(self):
         steps = self._wiz_steps()
-        self.step_label.config(foreground="")
+        self.step_label.config(fg=self.C_TEXT)
         if self._wiz_step >= len(steps):
             self.step_label.config(text="All steps Done. Server running (or check console).")
             self.wiz_btn.config(text="Done", state="disabled")
