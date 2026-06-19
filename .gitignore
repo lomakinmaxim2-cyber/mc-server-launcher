@@ -1,0 +1,10 @@
+build/
+dist/
+*.spec
+__pycache__/
+runtime/
+server/
+*.log
+install_log.txt
+world_backup_*/
+.env

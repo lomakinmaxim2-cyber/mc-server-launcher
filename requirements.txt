@@ -1,0 +1,2 @@
+# tkinter ships with CPython — no pip entry needed
+certifi

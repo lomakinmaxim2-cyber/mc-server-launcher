@@ -31,6 +31,13 @@ MC_MANIFEST = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json"
 
 APP = "MC Server Launcher"
 
+
+def _base_dir():
+    """Directory next to the launcher or frozen exe — runtime/server paths live here."""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
 # Allow disabling cert verification when the system cert store is broken/expired
 # (common on Windows + DPI bypass tools). Off by default; flipped on automatically
 # after the first CERTIFICATE_VERIFY_FAILED, or via the checkbox in the UI.
@@ -86,6 +93,9 @@ def download(url, dest, log):
 
 
 class Launcher(tk.Tk):
+    # (minimum MC version string, required Java major) — checked highest-first
+    MC_JAVA_MAJOR = [("1.20.5", 21), ("1.17", 17), ("0", 8)]
+
     # mods that only work on the client and crash a dedicated server
     CLIENT_ONLY = ["iris", "sodium", "xaero", "entityculling", "entity-culling",
                    "indium", "reeses", "betterf3", "modmenu", "mod-menu",
@@ -200,6 +210,8 @@ class Launcher(tk.Tk):
                    command=self.fix_eula).pack(side="left", padx=4)
         ttk.Button(fix, text="Fix: Java check",
                    command=self.run_java_check).pack(side="left", padx=4)
+        ttk.Button(fix, text="Download Java",
+                   command=self.run_download_java).pack(side="left", padx=4)
         ttk.Button(fix, text="Check Mods",
                    command=self.run_check_mods).pack(side="left", padx=4)
         ttk.Button(fix, text="Open Install Log",
@@ -656,9 +668,10 @@ class Launcher(tk.Tk):
         self.threaded(self._java_check)
 
     def _java_check(self):
-        self.log("=== Java check ===")
+        java = self._java_exe()
+        self.log(f"=== Java check ({java}) ===")
         try:
-            p = subprocess.run(["java", "-version"], capture_output=True, text=True)
+            p = subprocess.run([java, "-version"], capture_output=True, text=True)
             out = (p.stderr or p.stdout).strip()
             self.log(out)
             line = out.splitlines()[0] if out else ""
@@ -678,7 +691,7 @@ class Launcher(tk.Tk):
                 else:
                     self.log("Java too old. Install Java 21: winget install Microsoft.OpenJDK.21")
         except FileNotFoundError:
-            self.log("Java not found on PATH. Install: winget install Microsoft.OpenJDK.21")
+            self.log("Java not found. Use 'Download Java' to get a bundled JDK.")
         except Exception as e:
             self.log(f"JAVA CHECK ERROR: {e}")
 
@@ -1247,8 +1260,9 @@ class Launcher(tk.Tk):
             self.log(f"Starting via {target} ...")
         elif kind == "jar":
             jar_path = os.path.join(sd, target)
-            cmd = ["java", f"-Xmx{ram}", f"-Xms{ram}", "-jar", jar_path, "nogui"]
-            self.log(f"Starting jar {target} ...")
+            java = self._java_exe()
+            cmd = [java, f"-Xmx{ram}", f"-Xms{ram}", "-jar", jar_path, "nogui"]
+            self.log(f"Starting jar {target} (java: {java}) ...")
         else:
             self.log("No start script or server jar found. Install first.")
             return
@@ -1306,8 +1320,9 @@ class Launcher(tk.Tk):
                 fixed.append(cand if os.path.exists(cand) else a)
             else:
                 fixed.append(a)
-        cmd = ["java"] + fixed
-        self.log("RUN: java " + " ".join(fixed))
+        java = self._java_exe()
+        cmd = [java] + fixed
+        self.log("RUN: " + java + " " + " ".join(fixed))
         p = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT, text=True, bufsize=1,
                              encoding="utf-8", errors="replace", env=self._utf8_env())
@@ -1316,6 +1331,84 @@ class Launcher(tk.Tk):
         p.wait()
         if p.returncode != 0:
             raise RuntimeError(f"java exited {p.returncode}")
+
+
+    # ---------- bundled Java resolver ----------
+    def _required_java_major(self):
+        mc = self.mc_version.get()
+        def _vt(s):
+            return tuple(int(x) for x in s.split(".") if x.isdigit())
+        try:
+            mv = _vt(mc)
+            for threshold, major in self.MC_JAVA_MAJOR:
+                if mv >= _vt(threshold):
+                    return major
+        except Exception:
+            pass
+        return 17
+
+    def _bundled_java_path(self, major):
+        base = os.path.join(_base_dir(), "runtime", f"jdk-{major}")
+        if not os.path.isdir(base):
+            return None
+        exe_name = "java.exe" if os.name == "nt" else "java"
+        for root, _dirs, files in os.walk(base):
+            if exe_name in files:
+                return os.path.join(root, exe_name)
+        return None
+
+    def _java_exe(self):
+        major = self._required_java_major()
+        bundled = self._bundled_java_path(major)
+        return bundled if bundled else "java"
+
+    def run_download_java(self):
+        self.threaded(self._download_java)
+
+    def _download_java(self):
+        import tarfile, platform as _platform
+        major = self._required_java_major()
+        self.log(f"=== Bundled Java {major} (Temurin/Adoptium) ===")
+        if self._bundled_java_path(major):
+            self.log(f"Java {major} already present at runtime/jdk-{major}/. Skipping.")
+            return
+
+        if os.name == "nt":
+            os_name, arch, ext = "windows", "x64", "zip"
+        elif sys.platform == "darwin":
+            arch = "aarch64" if _platform.machine() == "arm64" else "x64"
+            os_name, ext = "mac", "tar.gz"
+        else:
+            arch = "aarch64" if _platform.machine() in ("aarch64", "arm64") else "x64"
+            os_name, ext = "linux", "tar.gz"
+
+        url = (f"https://api.adoptium.net/v3/binary/latest/{major}/ga/"
+               f"{os_name}/{arch}/jdk/hotspot/normal/eclipse")
+        dest_dir = os.path.join(_base_dir(), "runtime", f"jdk-{major}")
+        os.makedirs(dest_dir, exist_ok=True)
+        archive = os.path.join(dest_dir, f"jdk-{major}.{ext}")
+
+        try:
+            download(url, archive, self.log)
+            self.log("Extracting JDK...")
+            if ext == "zip":
+                with zipfile.ZipFile(archive) as z:
+                    z.extractall(dest_dir)
+            else:
+                with tarfile.open(archive) as t:
+                    t.extractall(dest_dir)
+            os.remove(archive)
+
+            found = self._bundled_java_path(major)
+            if found:
+                if os.name != "nt":
+                    import stat
+                    os.chmod(found, os.stat(found).st_mode | stat.S_IEXEC)
+                self.log(f"Java {major} ready: {found}")
+            else:
+                self.log("ERROR: java executable not found after extraction.")
+        except Exception as e:
+            self.log(f"JAVA DOWNLOAD ERROR: {e}")
 
 
 if __name__ == "__main__":

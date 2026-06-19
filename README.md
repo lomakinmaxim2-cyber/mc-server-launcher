@@ -18,6 +18,7 @@ Supports **NeoForge**, **Forge**, and **Fabric** loaders. Import modpacks direct
 - **Add existing server** — auto-detects loader and MC version from an already-set-up server folder
 - **Vanilla server.jar fetcher** — downloads from Mojang with SHA1 verification and retries (fixes Fabric's "Missing game jar" error)
 - **Built-in console** — view server output and send commands without opening a terminal
+- **Bundled Java** — downloads a portable Temurin JDK (via Adoptium API) into `runtime/jdk-<major>/` next to the launcher. Automatically picks Java 8 / 17 / 21 based on the selected MC version. Cached on disk — only downloaded once
 - **Fixes & tools** — Java version check, EULA accept, stale session.lock cleanup, port conflict detection, targeted server kill button
 - **Safe "Kill Java" button** — kills only the tracked server process (and its child tree), never your Minecraft client or other Java apps. Falls back to killing by port PID if no tracked process exists
 - **SSL auto-fallback** — handles broken system cert stores (common with DPI bypass tools on Windows)
@@ -26,20 +27,37 @@ Supports **NeoForge**, **Forge**, and **Fabric** loaders. Import modpacks direct
 
 ## Requirements
 
-- **Python 3.8+** (tkinter included in most distributions)
-- **Java 17+** on PATH — Java 21 recommended for MC 1.20.5+
-  ```
-  winget install Microsoft.OpenJDK.21
-  ```
-- Optional: `certifi` (`pip install certifi`) for better SSL handling on Windows
+**To run from source:**
+- Python 3.8+ (tkinter is included with CPython)
+- `pip install -r requirements.txt` (just `certifi`)
+- Java is **not** required upfront — use the **Download Java** button in the app
+
+**Pre-built exe:** no Python or Java needed — download `MCServerLauncher.exe` from the [Releases page](../../releases) and run it. Java is downloaded by the app on demand.
+
+---
+
+## Running from source
+
+```bash
+pip install -r requirements.txt
+python mc_server_launcher_9.py
+```
+
+### Building the exe locally
+
+```bash
+pip install -r dev-requirements.txt
+python build.py
+# output: dist/MCServerLauncher.exe
+```
+
+### Releases
+
+Releases are built automatically by GitHub Actions whenever a `v*` tag is pushed. Download the latest `MCServerLauncher.exe` from the [Releases page](../../releases).
 
 ---
 
 ## Usage
-
-```bash
-python mc_server_launcher_9.py
-```
 
 ### Quick start (wizard)
 
