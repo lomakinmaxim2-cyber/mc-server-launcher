@@ -144,8 +144,61 @@ class Launcher(tk.Tk):
 
         self._setup_theme()
         self._build_ui()
+        self._load_config()
+        self._attach_save_traces()
         self.refresh_versions()
         self.wizard_show()
+
+    # ---------- config persistence ----------
+    _CONFIG_FILE = os.path.join(_base_dir(), "launcher_config.json")
+
+    def _config_vars(self):
+        """Return {key: StringVar/BooleanVar} for every setting we persist."""
+        return {
+            "server_dir":     self.server_dir,
+            "mods_src":       self.mods_src,
+            "loader":         self.loader,
+            "mc_version":     self.mc_version,
+            "loader_version": self.loader_version,
+            "ram":            self.ram,
+            "eula":           self.eula,
+            "online_mode":    self.online_mode,
+            "insecure_ssl":   self.insecure_ssl,
+            "chunky_world":   self.chunky_world,
+            "chunky_shape":   self.chunky_shape,
+            "chunky_radius":  self.chunky_radius,
+            "chunky_cx":      self.chunky_cx,
+            "chunky_cz":      self.chunky_cz,
+        }
+
+    def _load_config(self):
+        try:
+            with open(self._CONFIG_FILE, encoding="utf-8") as f:
+                data = json.load(f)
+            for key, var in self._config_vars().items():
+                if key in data:
+                    if isinstance(var, tk.BooleanVar):
+                        var.set(bool(data[key]))
+                    else:
+                        var.set(str(data[key]))
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            print(f"Config load error: {e}")
+
+    def _save_config(self, *_):
+        data = {}
+        for key, var in self._config_vars().items():
+            data[key] = var.get()
+        try:
+            with open(self._CONFIG_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            print(f"Config save error: {e}")
+
+    def _attach_save_traces(self):
+        for var in self._config_vars().values():
+            var.trace_add("write", self._save_config)
 
     # ---------- theme ----------
     def _setup_theme(self):
