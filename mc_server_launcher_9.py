@@ -401,6 +401,45 @@ class Launcher(tk.Tk):
                                         fg=self.C_DIM, font=("Segoe UI", 7))
         self.mod_status_lbl.pack(side="left", padx=8)
 
+        # ── Chunky ───────────────────────────────────────────────────
+        chk = self._section(body, "Chunky Pre-Generation", pady=(4, 0))
+
+        cr1 = self._row(chk, pady=(5, 2))
+        self._lbl(cr1, "World")
+        self.chunky_world = tk.StringVar(value="world")
+        ttk.Entry(cr1, textvariable=self.chunky_world, width=10).pack(side="left", padx=(1, 8))
+        self._lbl(cr1, "Shape")
+        self.chunky_shape = tk.StringVar(value="circle")
+        ttk.Combobox(cr1, textvariable=self.chunky_shape, state="readonly",
+                     values=["circle", "square", "rectangle"], width=9
+                     ).pack(side="left", padx=(1, 8))
+        self._lbl(cr1, "Radius")
+        self.chunky_radius = tk.StringVar(value="500")
+        ttk.Entry(cr1, textvariable=self.chunky_radius, width=7).pack(side="left", padx=(1, 8))
+        self._lbl(cr1, "CenterX")
+        self.chunky_cx = tk.StringVar(value="0")
+        ttk.Entry(cr1, textvariable=self.chunky_cx, width=6).pack(side="left", padx=(1, 4))
+        self._lbl(cr1, "CenterZ")
+        self.chunky_cz = tk.StringVar(value="0")
+        ttk.Entry(cr1, textvariable=self.chunky_cz, width=6).pack(side="left", padx=(1, 0))
+
+        cr2 = self._row(chk, pady=(2, 5))
+        ttk.Button(cr2, text="▶ Start",  command=self.chunky_start,
+                   style="Green.TButton").pack(side="left", padx=(0, 3))
+        ttk.Button(cr2, text="⏸ Pause",  command=self.chunky_pause
+                   ).pack(side="left", padx=(0, 3))
+        ttk.Button(cr2, text="▶ Resume", command=self.chunky_resume
+                   ).pack(side="left", padx=(0, 3))
+        ttk.Button(cr2, text="■ Cancel", command=self.chunky_cancel,
+                   style="Red.TButton").pack(side="left", padx=(0, 8))
+        tk.Frame(cr2, bg=self.C_BORDER, width=1).pack(side="left", fill="y", padx=4)
+        ttk.Button(cr2, text="Status",   command=self.chunky_status,
+                   style="Ghost.TButton").pack(side="left", padx=(4, 3))
+        ttk.Button(cr2, text="Reload",   command=self.chunky_reload,
+                   style="Ghost.TButton").pack(side="left", padx=(0, 3))
+        ttk.Button(cr2, text="Trim",     command=self.chunky_trim,
+                   style="Ghost.TButton").pack(side="left")
+
         # ── Console ───────────────────────────────────────────────────
         con_outer = tk.Frame(body, bg=self.C_BG)
         con_outer.pack(fill="both", expand=True, padx=8, pady=(4, 8))
@@ -1596,6 +1635,58 @@ class Launcher(tk.Tk):
                 self.cmd_entry.delete(0, "end")
             except Exception as e:
                 self.log(f"CMD ERROR: {e}")
+
+    def _send_cmd(self, cmd):
+        """Send a command to the running server, or log a warning if not running."""
+        if self.proc and self.proc.poll() is None:
+            try:
+                self.proc.stdin.write(cmd + "\n")
+                self.proc.stdin.flush()
+                self.log(f"> {cmd}")
+            except Exception as e:
+                self.log(f"CMD ERROR: {e}")
+        else:
+            self.log("Server is not running — start it first.")
+
+    # ---------- Chunky commands ----------
+    def _chunky_base(self):
+        """Emit world/shape/radius/center setup commands and return True if valid."""
+        world  = self.chunky_world.get().strip()
+        shape  = self.chunky_shape.get().strip()
+        radius = self.chunky_radius.get().strip()
+        cx     = self.chunky_cx.get().strip()
+        cz     = self.chunky_cz.get().strip()
+        if not all([world, shape, radius, cx, cz]):
+            self.log("Fill in all Chunky fields first.")
+            return False
+        self._send_cmd(f"chunky world {world}")
+        self._send_cmd(f"chunky shape {shape}")
+        self._send_cmd(f"chunky center {cx} {cz}")
+        self._send_cmd(f"chunky radius {radius}")
+        return True
+
+    def chunky_start(self):
+        if self._chunky_base():
+            self._send_cmd("chunky start")
+
+    def chunky_pause(self):
+        self._send_cmd("chunky pause")
+
+    def chunky_resume(self):
+        self._send_cmd("chunky continue")
+
+    def chunky_cancel(self):
+        self._send_cmd("chunky cancel")
+
+    def chunky_status(self):
+        self._send_cmd("chunky")
+
+    def chunky_reload(self):
+        self._send_cmd("chunky reload")
+
+    def chunky_trim(self):
+        if self._chunky_base():
+            self._send_cmd("chunky trim")
 
     def stop_server(self):
         if self.proc and self.proc.poll() is None:
