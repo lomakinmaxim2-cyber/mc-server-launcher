@@ -1603,7 +1603,28 @@ class Launcher(tk.Tk):
     def _start(self):
         sd = self.server_dir.get()
         if self.proc and self.proc.poll() is None:
-            self.log("Server already running.")
+            ans = messagebox.askyesnocancel(
+                APP,
+                "A server is already running or loading.\n\n"
+                "• Yes  — stop it and start a fresh one\n"
+                "• No   — leave it running and do nothing\n"
+                "• Cancel — go back")
+            if ans is None or ans is False:
+                return
+            # Yes: stop the current server then restart
+            self.log("Stopping current server before restarting...")
+            try:
+                self.proc.stdin.write("stop\n")
+                self.proc.stdin.flush()
+            except Exception:
+                pass
+            try:
+                self.proc.wait(timeout=15)
+            except Exception:
+                self.proc.kill()
+            self.proc = None
+            self.log("Stopped. Starting fresh server...")
+            self.after(500, lambda: self.threaded(self._start))
             return
         if not self.eula.get():
             self.log("Accept EULA first.")
