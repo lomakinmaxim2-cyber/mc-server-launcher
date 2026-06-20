@@ -1,42 +1,50 @@
 # MC Server Launcher
 
-A desktop GUI tool for setting up and running Minecraft modded servers — no command-line knowledge required.
+> A one-click GUI for setting up, managing, and running modded Minecraft servers — no command line needed.
 
-Supports **NeoForge**, **Forge**, and **Fabric** loaders. Import modpacks directly from Modrinth (`.mrpack`) or CurseForge (`.zip`), sync mods from your client folder, and launch the server — all from one window.
+![Python](https://img.shields.io/badge/python-3.8%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
+[![Releases](https://img.shields.io/github/v/release/lomakinmaxim2-cyber/mc-server-launcher)](https://github.com/lomakinmaxim2-cyber/mc-server-launcher/releases)
 
-![Python](https://img.shields.io/badge/python-3.8%2B-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
+---
+
+## Download
+
+**No Python or Java required.**
+Grab the latest `MCServerLauncher.exe` from the [Releases page](https://github.com/lomakinmaxim2-cyber/mc-server-launcher/releases) and run it directly.
 
 ---
 
 ## Features
 
-- **Guided 7-step setup wizard** — walks you through every step from folder selection to first launch
-- **One-click server install** — downloads and runs the NeoForge / Forge / Fabric installer automatically
+### Server Setup
+- **Guided 7-step wizard** — walks you from folder selection to a running server
+- **One-click install** — downloads and runs the NeoForge / Forge / Fabric installer automatically
+- **Add existing server** — points the launcher at an already-set-up folder and auto-detects loader + MC version
+- **Persistent settings** — all fields (folders, loader, RAM, Chunky config) are saved to `launcher_config.json` and restored on next launch
+
+### Modpacks & Mods
 - **Modpack import** — Modrinth `.mrpack` (full auto-download) and CurseForge `.zip` (overrides + mod list)
-- **Mod sync** — copies mods from your client mods folder, skipping client-only mods automatically
-- **Client-mod filter** — detects and removes mods like Sodium, Iris, OptiFine, Xaero's that crash a dedicated server
-- **Add existing server** — auto-detects loader and MC version from an already-set-up server folder
-- **Vanilla server.jar fetcher** — downloads from Mojang with SHA1 verification and retries (fixes Fabric's "Missing game jar" error)
-- **Built-in console** — view server output and send commands without opening a terminal
-- **Bundled Java** — downloads a portable Temurin JDK (via Adoptium API) into `runtime/jdk-<major>/` next to the launcher. Automatically picks Java 8 / 17 / 21 based on the selected MC version. Cached on disk — only downloaded once
-- **Fixes & tools** — Java version check, EULA accept, stale session.lock cleanup, port conflict detection, targeted server kill button
-- **Safe "Kill Java" button** — kills only the tracked server process (and its child tree), never your Minecraft client or other Java apps. Falls back to killing by port PID if no tracked process exists
-- **SSL auto-fallback** — handles broken system cert stores (common with DPI bypass tools on Windows)
+- **Modrinth mod search** — search by name, filter by MC version and loader, install directly to your server's `mods/` folder
+- **Mod sync** — copies mods from your client folder, skipping client-only mods automatically
+- **Client-mod filter** — detects and removes mods like Sodium, Iris, OptiFine, and Xaero's that crash a dedicated server
+
+### Java
+- **Bundled Java download** — fetches a portable Temurin JDK from Adoptium into `runtime/jdk-<major>/`. Auto-picks Java 8 / 17 / 21 based on the MC version. Cached on disk — only downloaded once
+- **Safe kill** — stops only the tracked server process (`taskkill /F /T /PID`), never your Minecraft client or other Java apps
+
+### Tools
+- **Chunky pre-generation** — built-in panel to configure and send Chunky commands (world, shape, radius, center). Buttons for Start, Pause, Resume, Cancel, Trim, Status
+- **Server icon** — pick any image (PNG, JPG, WEBP, etc.); auto-resized and converted to the required 64x64 PNG and saved as `server-icon.png`
+- **Vanilla server.jar fetcher** — downloads from Mojang with SHA1 verification and 3 retries (fixes Fabric's "Missing game jar" error)
+- **Built-in console** — live server output + command input, no separate terminal needed
+- **SSL auto-fallback** — handles broken cert stores common with DPI bypass tools on Windows
+- **Hidden subprocesses** — no CMD windows pop up when running installers or the server
 
 ---
 
-## Requirements
-
-**To run from source:**
-- Python 3.8+ (tkinter is included with CPython)
-- `pip install -r requirements.txt` (just `certifi`)
-- Java is **not** required upfront — use the **Download Java** button in the app
-
-**Pre-built exe:** no Python or Java needed — download `MCServerLauncher.exe` from the [Releases page](../../releases) and run it. Java is downloaded by the app on demand.
-
----
-
-## Running from source
+## Running from Source
 
 ```bash
 pip install -r requirements.txt
@@ -51,35 +59,31 @@ python build.py
 # output: dist/MCServerLauncher.exe
 ```
 
-### Releases
-
-Releases are built automatically by GitHub Actions whenever a `v*` tag is pushed. Download the latest `MCServerLauncher.exe` from the [Releases page](../../releases).
+Releases are built automatically by GitHub Actions on every `v*` tag push.
 
 ---
 
-## Usage
+## Quick Start (Wizard)
 
-### Quick start (wizard)
+1. Click **Browse** and pick a server folder
+2. Click **Import Modpack** or set a Mods folder
+3. Confirm loader and MC version
+4. Tick **Accept EULA** and set RAM
+5. Click **Install Server** and wait
+6. Click **Sync Mods** if using a mods folder
+7. Click **Start Server**
 
-1. Click **Browse** and pick a folder for your server
-2. Click **Import Modpack** to load a `.mrpack` or `.zip`, or set a **Mods folder** from your client
-3. Confirm the loader and MC version in the dropdowns
-4. Tick **Accept EULA** and set your RAM amount
-5. Click **1. Install Server** — wait for it to finish
-6. Click **2. Sync Mods** if you're using a separate mods folder
-7. Click **3. Start Server**
-
-Or use the **Guided Setup** bar to step through all of the above automatically.
+Or use the **Guided Setup** bar to step through automatically.
 
 ---
 
 ## Supported Loaders
 
-| Loader | Install method | Modpack format |
-|--------|---------------|----------------|
+| Loader | Install method | Modpack formats |
+|--------|---------------|-----------------|
 | NeoForge | Maven installer | `.mrpack` |
 | Forge | Maven installer | `.mrpack`, `.zip` |
-| Fabric | Fabric installer + Mojang server.jar | `.mrpack` |
+| Fabric | Fabric installer + Mojang `server.jar` | `.mrpack` |
 
 ---
 
